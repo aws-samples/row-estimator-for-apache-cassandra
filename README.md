@@ -25,27 +25,35 @@ The Cassandra Row Estimator is a command line application, named `cassandra-row-
 ```
 $ cassandra-row-estimator
 
-usage: cassandra-row-estimator [-h] [--hostname HOSTNAME] [--port PORT] [--ssl SSL] [--path-cert PATH_CERT] [--username USERNAME] [--password PASSWORD] [--keyspace KEYSPACE] [--table TABLE]
-                   [--execution-timeout EXECUTION_TIMEOUT] [--token-step TOKEN_STEP] [--rows-per-request ROWS_PER_REQUEST] [--pagination PAGINATION] [--dc DC] [--json JSON]
+usage: cassandra-row-estimator [-h] --hostname HOSTNAME --port PORT [--ssl SSL] [--path-cert PATH_CERT] [--username USERNAME] [--password PASSWORD] --keyspace KEYSPACE --table TABLE [--execution-timeout EXECUTION_TIMEOUT] [--token-step TOKEN_STEP]
+                               [--rows-per-request ROWS_PER_REQUEST] [--pagination PAGINATION] [--dc DC] [--json JSON]
 
 The tool helps to gather Cassandra rows stats
 
 optional arguments:
-  -h, --help            show the help message and exit
-  --hostname HOSTNAME   Cassandra endpoint
-  --port PORT           Cassandra native transport port
-  --ssl SSL             Use SSL
-  --path-cert PATH_CERT Path to the TLS certificate
+  -h, --help            show this help message and exit
+  --ssl SSL             Use SSL.
+  --path-cert PATH_CERT
+                        Path to the TLS certificate
   --username USERNAME   Authenticate as user
   --password PASSWORD   Authenticate using password
-  --keyspace KEYSPACE   Gather stats against provided keyspace
-  --table TABLE         Gather stats against provided table
-  --execution-timeout   Set the execution timeout in seconds
-  --token-step          Set the token step, for example, 2, 4, 8, 16, 32, ..., 255
-  --rows-per-request    How many rows per token should the tool scan
-  --pagination          Turn on pagination mechanism
+  --execution-timeout EXECUTION_TIMEOUT
+                        Set execution timeout in seconds
+  --token-step TOKEN_STEP
+                        Set token step, for example, 2, 4, 8, 16, 32, ..., 255
+  --rows-per-request ROWS_PER_REQUEST
+                        How many rows per token
+  --pagination PAGINATION
+                        Turn on pagination mechanism
   --dc DC               Define Cassandra datacenter for routing policy
   --json JSON           Estimata size of Cassandra rows as JSON
+
+required named arguments:
+  --hostname HOSTNAME   Cassandra endpoint
+  --port PORT           Cassandra native transport port
+  --keyspace KEYSPACE   Gather stats against provided keyspace
+  --table TABLE         Gather stats against provided table
+
 ```
 
 To estimate the row size in the Cassandra cluster, call the program with parameters:
