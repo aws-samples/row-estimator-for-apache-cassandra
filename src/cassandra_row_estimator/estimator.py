@@ -14,6 +14,7 @@ import optparse
 import time
 import os
 from datetime import datetime
+from sortedcontainers import SortedDict
 
 from threading import Thread, Event
 
@@ -24,7 +25,7 @@ stop_event = Event()
 class Estimator(object):
     
     """ The estimator class containes connetion, stats methods """
-    def __init__(self, endpoint_name, port='9042', username=None, password=None, ssl=None, dc=None, keyspace=None,
+    def __init__(self, endpoint_name, port, username=None, password=None, ssl=None, dc=None, keyspace=None,
                  table=None, execution_timeout=None, token_step=None, rows_per_request=None, pagination=5000, path_cert=None):
         self.endpoint_name = endpoint_name
         self.port = port
@@ -65,16 +66,16 @@ class Estimator(object):
         session = cluster.connect()
         return session
 
-    def mean(self, list):
+    def mean(self, lst):
         """ Calculate the mean of list of Cassandra values """
         final_mean = 0.0
 
-        for n in list:
+        for n in lst:
             final_mean += n
-        final_mean = final_mean / float(len(list))
+        final_mean = final_mean / float(len(lst))
         return final_mean
 
-    def weighted_mean(self, list):
+    def weighted_mean(self, lst):
         """ Calculates the weighted mean of a list of Cassandra values """
 
         total = 0
@@ -82,8 +83,8 @@ class Estimator(object):
         normalized_weights = []
 
         # Set up some lists for our weighted values, and weighted means
-        weights = [1 + n for n in range(len(list))]
-        normalized_weights = [0 for n in range(len(list))]
+        weights = [1 + n for n in range(len(lst))]
+        normalized_weights = [0 for n in range(len(lst))]
 
         # Calculate a total of all weights
         total_weight = reduce(lambda y,x: x+y, weights)
@@ -93,24 +94,24 @@ class Estimator(object):
             normalized_weights[q] = r / float(total_weight)
 
         # Add values of original List multipled by weighted values
-        for q,r in enumerate(list):
+        for q,r in enumerate(lst):
             total +=r * normalized_weights[q]
 
         return total
 
-    def median(self, list):
+    def median(self, lst):
         """ Calculate the median of Cassandra values """
         """ The middle value in the set """
 
-        tmp_list = sorted(list)
-        index = (len(list) - 1) // 2
+        tmp_lst = sorted(lst)
+        index = (len(lst) - 1) // 2
 
         # If the set has an even number of entries, combine the middle two
         # Otherwise print the middle value
-        if len(list) % 2 == 0:
-            return ((tmp_list[index] + tmp_list[index + 1]) / 2.0)
+        if len(lst) % 2 == 0:
+            return ((tmp_lst[index] + tmp_lst[index + 1]) / 2.0)
         else:
-            return tmp_list[index]
+            return tmp_lst[index]
 
     def quartiles(self, lst, q):
         """ Quartiles in stats are values that devide your data into quarters """
@@ -151,78 +152,12 @@ class Estimator(object):
 
             for typ, handler in all_handlers.items():
                 if isinstance(obj, typ):
+                    # Recursively call the function sizeof for each object handler to estimate the sum of bytes 
                     s += sum(map(sizeof, handler(obj)))
                     break
             return s
 
         return sizeof(obj)-obj_empty_size
-
-    def row_sampler(self):
-        """ The method iterates through ResultSets and returns list of values, where each value approximates footprint of string in memory """
-        a=0
-        session = self.get_connection()
-        pk = self.get_partition_key()
-
-        tbl_lookup_stmt = session.prepare("SELECT * FROM "+self.keyspace+"."+self.table+" WHERE token("+pk+")>? AND token("+pk+")<? LIMIT "+str(self.rows_per_request))
-        tbl_lookup_stmt.consistency_level = ConsistencyLevel.LOCAL_ONE
-        tbl_lookup_stmt.fetch_size=int(self.pagination)
-
-        ring=[]
-        ring_values_by_step=[]
-        rows_bytes=[]
-
-        for r in session.cluster.metadata.token_map.ring:
-            ring.append(r.value)
-        for i in ring[::self.token_step]:
-            ring_values_by_step.append(i)
-        it = iter(ring_values_by_step)
-
-        for val in it:
-            try:
-                results = session.execute(tbl_lookup_stmt, [val, next(it)])
-                for row in results:
-                    for value in row:
-                        s1 = str(value)
-                        a +=self.total_size(s1, verbose=False)
-                    rows_bytes.append(a)
-                    a = 0
-                    if stop_event.is_set():
-                        break
-            except StopIteration:
-                logger.info("no more token pairs")
-        self.rows_in_bytes = rows_bytes
-
-    def row_sampler_json(self):
-        session = self.get_connection()
-        cl = self.get_columns()
-        pk = self.get_partition_key()
-
-
-        tbl_lookup_stmt = session.prepare("SELECT json "+cl+" FROM "+self.keyspace+"."+self.table+" WHERE token("+pk+")>? AND token("+pk+")<? LIMIT "+str(self.rows_per_request))
-        tbl_lookup_stmt.consistency_level = ConsistencyLevel.LOCAL_ONE
-        tbl_lookup_stmt.fetch_size=int(self.pagination)
-
-        ring=[]
-        ring_values_by_step=[]
-        rows_bytes=[]
-
-        for r in session.cluster.metadata.token_map.ring:
-            ring.append(r.value)
-        for i in ring[::self.token_step]:
-            ring_values_by_step.append(i)
-        it = iter(ring_values_by_step)
-
-        for val in it:
-            try:
-                results = session.execute(tbl_lookup_stmt, [val, next(it)])
-                for row in results:
-                        s1 = str(row.json).replace('null','""')
-                        rows_bytes.append(self.total_size(s1, verbose=False))
-                        if stop_event.is_set():
-                            break
-            except StopIteration:
-                logger.info("no more token pairs")
-        self.rows_in_bytes = rows_bytes
 
     def get_total_column_size(self):
         """ The method returns total size of field names in ResultSets """
@@ -238,16 +173,17 @@ class Estimator(object):
     def get_partition_key(self):
         """ The method returns parition key """
         session = self.get_connection()
-        pk_results_stmt = session.prepare("select column_name from system_schema.columns where keyspace_name=? and table_name=? and kind='partition_key' ALLOW FILTERING")
+        pk_results_stmt = session.prepare("select column_name, position from system_schema.columns where keyspace_name=? and table_name=? and kind='partition_key' ALLOW FILTERING")
         pk_results_stmt.consistency_level = ConsistencyLevel.LOCAL_ONE
         pk_results = session.execute(pk_results_stmt, [self.keyspace, self.table])
-        pk=[]
+        sd = SortedDict()
         for p in pk_results:
-            pk.append(p.column_name)
-        if len(pk)>1:
-            pk_string = ','.join(pk)
+            sd[p.position]=p.column_name
+
+        if len(sd)>1:
+            pk_string = ','.join(sd.values())
         else:
-            pk_string = pk[0]
+            pk_string = sd.values()[0]
         return pk_string
 
     def get_columns(self):
@@ -265,3 +201,43 @@ class Estimator(object):
             cl_string = clms[0]
         return cl_string
 
+    def row_sampler(self, json=False):
+         a=0
+         session = self.get_connection()
+         cl = self.get_columns()
+         pk = self.get_partition_key()
+         if (json == True):
+             tbl_lookup_stmt = session.prepare("SELECT json "+cl+" FROM "+self.keyspace+"."+self.table+" WHERE token("+pk+")>? AND token("+pk+")<? LIMIT "+str(self.rows_per_request))
+         else:
+             tbl_lookup_stmt = session.prepare("SELECT * FROM "+self.keyspace+"."+self.table+" WHERE token("+pk+")>? AND token("+pk+")<? LIMIT "+str(self.rows_per_request)) 
+         tbl_lookup_stmt.consistency_level = ConsistencyLevel.LOCAL_ONE
+         tbl_lookup_stmt.fetch_size=int(self.pagination)
+
+         ring=[]
+         ring_values_by_step=[]
+         rows_bytes=[]
+
+         for r in session.cluster.metadata.token_map.ring:
+             ring.append(r.value)
+         for i in ring[::self.token_step]:
+             ring_values_by_step.append(i)
+         it = iter(ring_values_by_step)
+
+         for val in it:
+             try:
+                 results = session.execute(tbl_lookup_stmt, [val, next(it)])
+                 for row in results:
+                         if (json == True):
+                             s1 = str(row.json).replace('null','""')
+                             rows_bytes.append(self.total_size(s1, verbose=False))
+                         else:
+                             for value in row:
+                                 s1 = str(value)
+                                 a +=self.total_size(s1, verbose=False)
+                             rows_bytes.append(a)
+                             a = 0
+                         if stop_event.is_set():
+                             break
+             except StopIteration:
+                 logger.info("no more token pairs")
+         self.rows_in_bytes = rows_bytes

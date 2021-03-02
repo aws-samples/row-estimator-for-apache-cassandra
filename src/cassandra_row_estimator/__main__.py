@@ -20,26 +20,27 @@ def main():
 
     # Configure app args
     parser = argparse.ArgumentParser(description='The tool helps to gather Cassandra rows stats')
-    parser.add_argument('--hostname', help='Cassandra endpoint', default='127.0.0.1')
-    parser.add_argument('--port', help='Cassandra native transport port')
+    requiredNamed = parser.add_argument_group('required named arguments')
+    requiredNamed.add_argument('--hostname', help='Cassandra endpoint', default='127.0.0.1', required=True)
+    requiredNamed.add_argument('--port', help='Cassandra native transport port', required=True)
     parser.add_argument('--ssl', help='Use SSL.', default=None)
     parser.add_argument('--path-cert', help='Path to the TLS certificate', default=None)
     parser.add_argument('--username', help='Authenticate as user')
     parser.add_argument('--password',help='Authenticate using password')
-    parser.add_argument('--keyspace',help='Gather stats against provided keyspace', default='system')
-    parser.add_argument('--table',help='Gather stats against provided table', default='size_estimates')
+    requiredNamed.add_argument('--keyspace',help='Gather stats against provided keyspace', required=True)
+    requiredNamed.add_argument('--table',help='Gather stats against provided table', required=True)
     parser.add_argument('--execution-timeout', help='Set execution timeout in seconds', type=int, default=360)
     parser.add_argument('--token-step', help='Set token step, for example, 2, 4, 8, 16, 32, ..., 255',type=int, default=4)
     parser.add_argument('--rows-per-request', help='How many rows per token',type=int, default=1000)
     parser.add_argument('--pagination', help='Turn on pagination mechanism',type=int, default=200)
     parser.add_argument('--dc', help='Define Cassandra datacenter for routing policy', default='datacenter1')
     parser.add_argument('--json', help='Estimata size of Cassandra rows as JSON', default=None)
-    args = parser.parse_args()
-
-    if len(sys.argv[1:])<2:
+    
+    if (len(sys.argv)<2):
         parser.print_help()
         sys.exit()
 
+    args = parser.parse_args()
     p_hostname = args.hostname
     p_port = args.port
     p_username = args.username
@@ -55,8 +56,8 @@ def main():
     p_rows_per_request = args.rows_per_request
     p_pagination = args.pagination  
     
-    estimator = Estimator(p_hostname, p_port, username=p_username, password=p_password, ssl=p_ssl, dc=p_dc, keyspace=p_keyspace, table=p_table,
-                          execution_timeout=p_execution_timeout, token_step=p_token_step, rows_per_request=p_rows_per_request, pagination=p_pagination, path_cert=p_path_cert)
+    estimator = Estimator(p_hostname, p_port, p_username, p_password, p_ssl, p_dc, p_keyspace, p_table,
+                          p_execution_timeout, p_token_step, p_rows_per_request, p_pagination, p_path_cert)
 
     logging.info("Endpoint: %s %s", p_hostname, p_port)
     logging.info("Keyspace name: %s", estimator.keyspace)
@@ -68,7 +69,7 @@ def main():
     logging.info("Execution-timeout: %s", estimator.execution_timeout)
 
     if p_json == None:
-        action_thread = Thread(target=estimator.row_sampler())
+        action_thread = Thread(target=estimator.row_sampler(json=False))
         action_thread.start()
         action_thread.join(timeout=estimator.execution_timeout)
         stop_event.set()
@@ -81,7 +82,7 @@ def main():
         logging.info("Number of sampled rows: %s", len(rows_in_bytes))
         logging.info("Estimated size of column names and values in a row:")
         logging.info("	Mean: %s", '{:06.2f}'.format(estimator.mean(val)))
-        #logging.info("	Weighted_mean: %s", '{:06.2f}'.format(estimator.weighted_mean(list(rows_columns_in_bytes))))
+        logging.info("	Weighted_mean: %s", '{:06.2f}'.format(estimator.weighted_mean(val)))
         logging.info("	Median: "+str(estimator.median(val)))
         logging.info("	Min: %s",min(val))
         logging.info("	P10: %s",'{:06.2f}'.format(estimator.quartiles(val, 0.1)))
@@ -102,7 +103,7 @@ def main():
         logging.info("Total column name size in a row: %s",columns_in_bytes)
         logging.info("Columns in a row: %s", estimator.get_columns().count(',')+1)
     else:
-        action_thread = Thread(target=estimator.row_sampler_json())
+        action_thread = Thread(target=estimator.row_sampler(json=True))
         action_thread.start()
         action_thread.join(timeout=estimator.execution_timeout)
         stop_event.set()
