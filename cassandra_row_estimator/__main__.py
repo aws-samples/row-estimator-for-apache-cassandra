@@ -5,8 +5,7 @@ import argparse
 
 from threading import Thread, Event
 
-#from cassandra_row_estimator.estimator import Estimator
-from estimator import Estimator
+from cassandra_row_estimator.estimator import Estimator
 
 def main():
     def add_helper(n):
