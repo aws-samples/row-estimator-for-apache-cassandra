@@ -82,7 +82,7 @@ def main():
         logging.info("Estimated size of column names and values in a row:")
         logging.info("	Mean: %s", '{:06.2f}'.format(estimator.mean(val)))
         logging.info("	Weighted_mean: %s", '{:06.2f}'.format(estimator.weighted_mean(val)))
-        logging.info("	Median: "+str(estimator.median(val)))
+        logging.info("	Median: %s", '{:06.2f}'.format(estimator.median(val)))
         logging.info("	Min: %s",min(val))
         logging.info("	P10: %s",'{:06.2f}'.format(estimator.quartiles(val, 0.1)))
         logging.info("	P50: %s",'{:06.2f}'.format(estimator.quartiles(val, 0.5)))

@@ -117,7 +117,7 @@ class Estimator(object):
         """ Quartiles in stats are values that devide your data into quarters """
         lst.sort()
         cnt = len(lst)
-        ith = int(round(q*(cnt+1)))
+        ith = int(math.floor(q*(cnt)))
         return lst[ith]
 
     def total_size(self, obj, handlers={}, verbose=False):
