@@ -28,7 +28,7 @@ def test_cassandra_row_estimator_init():
     session.execute("INSERT INTO cassandra_row_estimator.test (a, b) VALUES (%s, %s)", params)
 
 
-estimator = Estimator('10.0.1.6', 9042, 'cassandra', 'cassandra', None, 'datacenter1', 'cassandra_row_estimator', 'test',3600, 2, 1000, 3000, None)
+estimator = Estimator('127.0.0.1', 9042, 'cassandra', 'cassandra', None, 'datacenter1', 'cassandra_row_estimator', 'test',3600, 2, 1000, 3000, None)
 estimator.row_sampler(json=False)
 columns_in_bytes = estimator.get_total_column_size()
 rows_in_bytes = estimator.rows_in_bytes
