@@ -8,6 +8,8 @@ The challenge customers face in estimating capacity utilization is gathering row
 
 The Row estimator for Apache Cassandra solves this challenge by providing a way to gather row level statistics from the existing Cassandra cluster. This tool is designed to be run against production and UAT environments in a secure and non-invasive way. No customer data is captured, logged or stored in the process of gathering row metrics. The outputs of this library are byte size statistics of rows distributed across an Apache Cassandra table. 
 
+How to calculate the row size in Amazon Keyspaces https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-rows.html
+
 ## Installation
 
 You can install the Row estimator for Apache Cassandra from [PyPI](https://pypi.org/project/row-estimator-for-apache-cassandra/):
