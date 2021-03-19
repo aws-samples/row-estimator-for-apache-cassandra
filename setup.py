@@ -18,7 +18,7 @@ setuptools.setup(
      keywords = "row_estimator_for_apache_cassandra ApacheCassandra AmazonKeyspaces",
      license='Apache License 2.0',
      classifiers=[
-           "Development Status :: 4 - Beta", 
+           "Development Status :: 5 - Production/Stable", 
            "Topic :: Utilities",
            "License :: OSI Approved :: Apache Software License",
        ],
