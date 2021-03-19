@@ -15,7 +15,7 @@ How to calculate the row size in Amazon Keyspaces https://docs.aws.amazon.com/ke
 You can install the Row estimator for Apache Cassandra from [PyPI](https://pypi.org/project/row-estimator-for-apache-cassandra/):
 
 ```
-$ pip install cassandra-row-estimator
+$ pip install row-estimator-for-apache-cassandra
 ```
 
 The cassandra-row-estimator is supported on Python 3.6 and above.
@@ -61,7 +61,8 @@ required named arguments:
 To estimate the row size in the Cassandra cluster, call the program with parameters:
 
 ```
-	$ cassandra-row-estimator --hostname 0.0.0.0 --port 9042 --username cassandra --password cassandra --keyspace system --table size_estimates --token-step 1 --dc datacenter1 --rows-per-request 1000 
+$ cassandra-row-estimator --hostname 0.0.0.0 --port 9042 --username cassandra --password cassandra \
+                          --keyspace system --table size_estimates --token-step 1 --dc datacenter1 --rows-per-request 1000 
 ```
 
 ## List of Safe Guards
