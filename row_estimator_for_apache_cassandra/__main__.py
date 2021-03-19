@@ -19,7 +19,7 @@ import argparse
 
 from threading import Thread, Event
 
-from cassandra_row_estimator.estimator import Estimator
+from row_estimator_for_apache_cassandra.estimator import Estimator
 
 def main():
     def add_helper(n):
